@@ -124,6 +124,7 @@ var RelayTimeout int // unit is second
 
 var RelayMaxIdleConns int
 var RelayMaxIdleConnsPerHost int
+var RelayDisableHTTP2 bool
 
 var GeminiSafetySetting string
 

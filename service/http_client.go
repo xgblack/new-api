@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -37,7 +38,11 @@ func InitHttpClient() {
 	transport := &http.Transport{
 		MaxIdleConns:        common.RelayMaxIdleConns,
 		MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-		ForceAttemptHTTP2:   true,
+		ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
+	}
+	if common.RelayDisableHTTP2 {
+		// 彻底禁用 HTTP/2，避免部分上游/中间层在空闲后复用连接时触发 unexpected EOF。
+		transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 	}
 
 	if common.RelayTimeout == 0 {
@@ -102,10 +107,15 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        common.RelayMaxIdleConns,
 				MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-				ForceAttemptHTTP2:   true,
+				ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
 				Proxy:               http.ProxyURL(parsedURL),
 			},
 			CheckRedirect: checkRedirect,
+		}
+		if common.RelayDisableHTTP2 {
+			if transport, ok := client.Transport.(*http.Transport); ok && transport != nil {
+				transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+			}
 		}
 		client.Timeout = time.Duration(common.RelayTimeout) * time.Second
 		proxyClientLock.Lock()
@@ -137,12 +147,17 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 			Transport: &http.Transport{
 				MaxIdleConns:        common.RelayMaxIdleConns,
 				MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-				ForceAttemptHTTP2:   true,
+				ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
 				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 					return dialer.Dial(network, addr)
 				},
 			},
 			CheckRedirect: checkRedirect,
+		}
+		if common.RelayDisableHTTP2 {
+			if transport, ok := client.Transport.(*http.Transport); ok && transport != nil {
+				transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+			}
 		}
 		client.Timeout = time.Duration(common.RelayTimeout) * time.Second
 		proxyClientLock.Lock()
