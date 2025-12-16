@@ -177,7 +177,7 @@ func chooseDB(envName string, isLog bool) (*gorm.DB, error) {
 func InitDB() (err error) {
 	db, err := chooseDB("SQL_DSN", false)
 	if err == nil {
-		if common.DebugEnabled {
+		if common.SQLLogEnabled {
 			db = db.Debug()
 		}
 		DB = db
@@ -217,7 +217,7 @@ func InitLogDB() (err error) {
 	}
 	db, err := chooseDB("LOG_SQL_DSN", true)
 	if err == nil {
-		if common.DebugEnabled {
+		if common.SQLLogEnabled {
 			db = db.Debug()
 		}
 		LOG_DB = db

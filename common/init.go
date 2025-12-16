@@ -79,6 +79,8 @@ func InitEnv() {
 
 	// Initialize variables from constants.go that were using environment variables
 	DebugEnabled = os.Getenv("DEBUG") == "true"
+	// SQL_LOG_ENABLED 允许在开启 DEBUG 时单独关闭 SQL 日志；未设置时默认跟随 DEBUG
+	SQLLogEnabled = GetEnvOrDefaultBool("SQL_LOG_ENABLED", DebugEnabled)
 	MemoryCacheEnabled = os.Getenv("MEMORY_CACHE_ENABLED") == "true"
 	IsMasterNode = os.Getenv("NODE_TYPE") != "slave"
 
@@ -123,6 +125,8 @@ func initConstantEnv() {
 	constant.GetMediaToken = GetEnvOrDefaultBool("GET_MEDIA_TOKEN", true)
 	constant.GetMediaTokenNotStream = GetEnvOrDefaultBool("GET_MEDIA_TOKEN_NOT_STREAM", false)
 	constant.UpdateTask = GetEnvOrDefaultBool("UPDATE_TASK", true)
+	// TASK_POLL_LOG_ENABLED 控制任务进度轮询相关的周期性日志输出；未设置时默认跟随 DEBUG
+	constant.TaskPollingLogEnabled = GetEnvOrDefaultBool("TASK_POLL_LOG_ENABLED", DebugEnabled)
 	constant.AzureDefaultAPIVersion = GetEnvOrDefaultString("AZURE_DEFAULT_API_VERSION", "2025-04-01-preview")
 	constant.GeminiVisionMaxImageNum = GetEnvOrDefault("GEMINI_VISION_MAX_IMAGE_NUM", 16)
 	constant.NotifyLimitCount = GetEnvOrDefault("NOTIFY_LIMIT_COUNT", 2)

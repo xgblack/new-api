@@ -27,8 +27,8 @@ func UpdateTaskBulk() {
 	//imageModel := "midjourney"
 	for {
 		time.Sleep(time.Duration(15) * time.Second)
-		common.SysLog("任务进度轮询开始")
 		ctx := context.TODO()
+		taskPollSysLog("任务进度轮询开始")
 		allTasks := model.GetAllUnFinishSyncTasks(constant.TaskQueryLimit)
 		platformTask := make(map[constant.TaskPlatform][]*model.Task)
 		for _, t := range allTasks {
@@ -58,7 +58,7 @@ func UpdateTaskBulk() {
 				if err != nil {
 					logger.LogError(ctx, fmt.Sprintf("Fix null task_id task error: %v", err))
 				} else {
-					logger.LogInfo(ctx, fmt.Sprintf("Fix null task_id task success: %v", nullTaskIds))
+					taskPollLogInfo(ctx, fmt.Sprintf("Fix null task_id task success: %v", nullTaskIds))
 				}
 			}
 			if len(taskChannelM) == 0 {
@@ -67,8 +67,22 @@ func UpdateTaskBulk() {
 
 			UpdateTaskByPlatform(platform, taskChannelM, taskM)
 		}
-		common.SysLog("任务进度轮询完成")
+		taskPollSysLog("任务进度轮询完成")
 	}
+}
+
+func taskPollSysLog(msg string) {
+	if !constant.TaskPollingLogEnabled {
+		return
+	}
+	common.SysLog(msg)
+}
+
+func taskPollLogInfo(ctx context.Context, msg string) {
+	if !constant.TaskPollingLogEnabled {
+		return
+	}
+	logger.LogInfo(ctx, msg)
 }
 
 func UpdateTaskByPlatform(platform constant.TaskPlatform, taskChannelM map[int][]string, taskM map[string]*model.Task) {
@@ -95,7 +109,7 @@ func UpdateSunoTaskAll(ctx context.Context, taskChannelM map[int][]string, taskM
 }
 
 func updateSunoTaskAll(ctx context.Context, channelId int, taskIds []string, taskM map[string]*model.Task) error {
-	logger.LogInfo(ctx, fmt.Sprintf("渠道 #%d 未完成的任务有: %d", channelId, len(taskIds)))
+	taskPollLogInfo(ctx, fmt.Sprintf("渠道 #%d 未完成的任务有: %d", channelId, len(taskIds)))
 	if len(taskIds) == 0 {
 		return nil
 	}
