@@ -39,6 +39,7 @@ func InitHttpClient() {
 		MaxIdleConns:        common.RelayMaxIdleConns,
 		MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
 		ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
+		Proxy:               http.ProxyFromEnvironment, // Support HTTP_PROXY, HTTPS_PROXY, NO_PROXY env vars
 	}
 	if common.RelayDisableHTTP2 {
 		// 彻底禁用 HTTP/2，避免部分上游/中间层在空闲后复用连接时触发 unexpected EOF。
