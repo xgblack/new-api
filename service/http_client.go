@@ -41,6 +41,9 @@ func InitHttpClient() {
 		ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
 		Proxy:               http.ProxyFromEnvironment, // Support HTTP_PROXY, HTTPS_PROXY, NO_PROXY env vars
 	}
+	if common.TLSInsecureSkipVerify {
+		transport.TLSClientConfig = common.InsecureTLSConfig
+	}
 	if common.RelayDisableHTTP2 {
 		// 彻底禁用 HTTP/2，避免部分上游/中间层在空闲后复用连接时触发 unexpected EOF。
 		transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
@@ -107,13 +110,17 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 
 	switch parsedURL.Scheme {
 	case "http", "https":
+		transport := &http.Transport{
+			MaxIdleConns:        common.RelayMaxIdleConns,
+			MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
+			ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
+			Proxy:               http.ProxyURL(parsedURL),
+		}
+		if common.TLSInsecureSkipVerify {
+			transport.TLSClientConfig = common.InsecureTLSConfig
+		}
 		client := &http.Client{
-			Transport: &http.Transport{
-				MaxIdleConns:        common.RelayMaxIdleConns,
-				MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-				ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
-				Proxy:               http.ProxyURL(parsedURL),
-			},
+			Transport:     transport,
 			CheckRedirect: checkRedirect,
 		}
 		if common.RelayDisableHTTP2 {
@@ -147,22 +154,25 @@ func NewProxyHttpClient(proxyURL string) (*http.Client, error) {
 			return nil, err
 		}
 
-		client := &http.Client{
-			Transport: &http.Transport{
-				MaxIdleConns:        common.RelayMaxIdleConns,
-				MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
-				ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
-				DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-					return dialer.Dial(network, addr)
-				},
+		transport := &http.Transport{
+			MaxIdleConns:        common.RelayMaxIdleConns,
+			MaxIdleConnsPerHost: common.RelayMaxIdleConnsPerHost,
+			ForceAttemptHTTP2:   !common.RelayDisableHTTP2,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return dialer.Dial(network, addr)
 			},
-			CheckRedirect: checkRedirect,
 		}
+		if common.TLSInsecureSkipVerify {
+			transport.TLSClientConfig = common.InsecureTLSConfig
+		}
+
 		if common.RelayDisableHTTP2 {
 			if transport, ok := client.Transport.(*http.Transport); ok && transport != nil {
 				transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
 			}
 		}
+
+		client := &http.Client{Transport: transport, CheckRedirect: checkRedirect}
 		client.Timeout = time.Duration(common.RelayTimeout) * time.Second
 		proxyClientLock.Lock()
 		proxyClients[proxyURL] = client
